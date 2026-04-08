@@ -15,6 +15,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
+from itertools import combinations
 
 OUTPUT_DIR = "output"
 DATA_PATH = "data/student_performance.csv"
@@ -214,6 +215,20 @@ def plot_distributions(df):
         plt.close(fig)
         saved_files.append(out_path)
 
+    if "department" in df.columns and "gpa" in df.columns:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.violinplot(data=df, x="department", y="gpa", ax=ax)
+        ax.set_title("GPA distribution shape across departments")
+        ax.set_xlabel("Department")
+        ax.set_ylabel("GPA")
+        ax.tick_params(axis="x", rotation=20)
+        plt.tight_layout()
+
+        out_path = os.path.join(OUTPUT_DIR, "gpa_by_department_violin.png")
+        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        saved_files.append(out_path)
+
     if "scholarship" in df.columns:
         fig, ax = plt.subplots(figsize=(8, 5))
         scholarship_counts = df["scholarship"].value_counts()
@@ -301,6 +316,29 @@ def plot_correlations(df):
         "scatter_paths": scatter_paths,
     }
 
+def run_pairwise_department_tests(df):
+    """Run pairwise t-tests between departments with Bonferroni correction."""
+    departments = sorted(df["department"].dropna().unique())
+    pairs = list(combinations(departments, 2))
+    results = []
+
+    adjusted_alpha = 0.05 / len(pairs)
+
+    for dept1, dept2 in pairs:
+        gpa1 = df.loc[df["department"] == dept1, "gpa"].dropna()
+        gpa2 = df.loc[df["department"] == dept2, "gpa"].dropna()
+
+        t_stat, p_value = stats.ttest_ind(gpa1, gpa2, equal_var=False)
+
+        results.append({
+            "dept1": dept1,
+            "dept2": dept2,
+            "t_statistic": float(t_stat),
+            "p_value": float(p_value),
+            "significant_after_bonferroni": p_value < adjusted_alpha
+        })
+
+    return results, adjusted_alpha
 
 def run_hypothesis_tests(df):
     """Run statistical tests to validate observed patterns."""
@@ -374,23 +412,43 @@ def run_hypothesis_tests(df):
                 dept_groups.append(gpas)
                 dept_names.append(dept)
 
-        if len(dept_groups) >= 3:
-            f_stat, p_value = stats.f_oneway(*dept_groups)
+    if len(dept_groups) >= 3:
+        f_stat, p_value = stats.f_oneway(*dept_groups)
 
-            results["department_anova"] = {
-                "test": "One-way ANOVA",
-                "hypothesis": "Average GPA differs across departments.",
-                "f_statistic": float(f_stat),
-                "p_value": float(p_value),
-                "departments_tested": dept_names,
+        results["department_anova"] = {
+            "test": "One-way ANOVA",
+            "hypothesis": "Average GPA differs across departments.",
+            "f_statistic": float(f_stat),
+            "p_value": float(p_value),
+            "departments_tested": dept_names,
+        }
+
+        sig_text = "statistically significant" if p_value < 0.05 else "not statistically significant"
+
+        print("\n3) GPA across Departments (ANOVA)")
+        print(f"   F-statistic: {f_stat:.4f}")
+        print(f"   p-value: {format_p_value(p_value)}")
+        print(f"   Interpretation: Department GPA differences are {sig_text}.")
+
+        if p_value < 0.05:
+            pairwise_results, adjusted_alpha = run_pairwise_department_tests(df)
+
+            results["department_posthoc_tests"] = {
+                "test": "Pairwise t-tests with Bonferroni correction",
+                "adjusted_alpha": float(adjusted_alpha),
+                "pairwise_results": pairwise_results,
             }
 
-            sig_text = "statistically significant" if p_value < 0.05 else "not statistically significant"
+            print("\n   Post-hoc pairwise t-tests with Bonferroni correction:")
+            print(f"   Adjusted alpha: {adjusted_alpha:.4f}")
 
-            print("\n3) GPA across Departments (ANOVA)")
-            print(f"   F-statistic: {f_stat:.4f}")
-            print(f"   p-value: {format_p_value(p_value)}")
-            print(f"   Interpretation: Department GPA differences are {sig_text}.")
+            for row in pairwise_results:
+                sig = "significant" if row["significant_after_bonferroni"] else "not significant"
+                print(
+                    f"   {row['dept1']} vs {row['dept2']}: "
+                    f"t = {row['t_statistic']:.4f}, "
+                    f"p = {row['p_value']:.4f} -> {sig}"
+                )
 
     return results
 
@@ -497,9 +555,24 @@ Charts:
         md += f"""
 ### GPA Differences Across Departments (ANOVA)
 A one-way ANOVA tested whether average GPA differs across departments.
-The result was F = {a['f_statistic']:.4f}, p = {format_p_value(a['p_value'])}.
+The result was F = {a['f_statistic']:.4f}, p {format_p_value(a['p_value'])}.
 This result is {anova_sig}.
 """
+
+    if "department_posthoc_tests" in test_results:
+        posthoc = test_results["department_posthoc_tests"]
+        md += f"""
+Because the ANOVA result was statistically significant, post-hoc pairwise t-tests were run using Bonferroni correction with adjusted alpha = {posthoc['adjusted_alpha']:.4f}.
+"""
+        for row in posthoc["pairwise_results"]:
+            sig = "significant" if row["significant_after_bonferroni"] else "not significant"
+            md += (
+                f"- {row['dept1']} vs {row['dept2']}: "
+                f"t = {row['t_statistic']:.4f}, "
+                f"p = {row['p_value']:.4f} ({sig})\n"
+            )
+    else:
+        md += "\nSince the ANOVA result was not statistically significant, no post-hoc pairwise t-tests were performed.\n"
 
     md += f"""
 
