@@ -1,0 +1,48 @@
+Automated EDA Data Profile
+============================================================
+
+Shape
+Rows: 2000
+Columns: 10
+
+Columns
+student_id, department, semester, course_load, study_hours_weekly, gpa, attendance_pct, has_internship, commute_minutes, scholarship
+
+Data Types
+student_id                str
+department                str
+semester                  str
+course_load             int64
+study_hours_weekly    float64
+gpa                   float64
+attendance_pct        float64
+has_internship            str
+commute_minutes       float64
+scholarship               str
+
+Missing Values Summary
+                    missing_count  missing_pct
+student_id                      0         0.00
+department                      0         0.00
+semester                        0         0.00
+course_load                     0         0.00
+study_hours_weekly              0         0.00
+gpa                             0         0.00
+attendance_pct                  0         0.00
+has_internship                  0         0.00
+commute_minutes               181         9.05
+scholarship                   389        19.45
+
+Descriptive Statistics
+       student_id        department     semester  course_load  study_hours_weekly          gpa  attendance_pct has_internship  commute_minutes scholarship
+count        2000              2000         2000  2000.000000          2000.00000  2000.000000     2000.000000           2000      1819.000000        1611
+unique       2000                 5            3          NaN                 NaN          NaN             NaN              2              NaN           4
+top      STU00001  Computer Science  Spring 2024          NaN                 NaN          NaN             NaN             No              NaN       Merit
+freq            1               415          676          NaN                 NaN          NaN             NaN           1476              NaN         418
+mean          NaN               NaN          NaN     4.470500            14.88105     2.774545       77.479650            NaN        25.547554         NaN
+std           NaN               NaN          NaN     1.110741             5.88398     0.427506       11.773926            NaN        11.565584         NaN
+min           NaN               NaN          NaN     3.000000             1.00000     1.310000       36.700000            NaN         5.000000         NaN
+25%           NaN               NaN          NaN     3.000000            10.90000     2.480000       69.900000            NaN        17.000000         NaN
+50%           NaN               NaN          NaN     4.000000            14.90000     2.785000       77.300000            NaN        25.000000         NaN
+75%           NaN               NaN          NaN     5.000000            19.00000     3.080000       86.000000            NaN        33.000000         NaN
+max           NaN               NaN          NaN     6.000000            33.00000     4.000000      100.000000            NaN        79.000000         NaN
